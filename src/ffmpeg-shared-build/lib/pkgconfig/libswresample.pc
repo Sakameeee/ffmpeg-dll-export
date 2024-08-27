@@ -1,0 +1,14 @@
+prefix=/d/download/ffmpeg-shared
+exec_prefix=${prefix}
+libdir=/d/download/ffmpeg-shared/lib
+includedir=/d/download/ffmpeg-shared/include
+
+Name: libswresample
+Description: FFmpeg audio resampling library
+Version: 5.2.100
+Requires: 
+Requires.private: libavutil >= 59.34.100
+Conflicts:
+Libs: -L${libdir}  -lswresample 
+Libs.private: -lm -latomic
+Cflags: -I${includedir}

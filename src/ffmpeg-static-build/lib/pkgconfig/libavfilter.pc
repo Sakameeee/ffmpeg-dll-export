@@ -1,0 +1,14 @@
+prefix=/d/download/ffmpeg-full
+exec_prefix=${prefix}
+libdir=/d/download/ffmpeg-full/lib
+includedir=/d/download/ffmpeg-full/include
+
+Name: libavfilter
+Description: FFmpeg audio/video filtering library
+Version: 10.2.102
+Requires: libswscale >= 8.2.100, libavformat >= 61.5.101, libavcodec >= 61.11.100, libswresample >= 5.2.100, libavutil >= 59.34.100
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lavfilter -lm -latomic
+Libs.private: 
+Cflags: -I${includedir}

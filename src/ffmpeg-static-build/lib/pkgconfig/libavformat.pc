@@ -1,0 +1,14 @@
+prefix=/d/download/ffmpeg-full
+exec_prefix=${prefix}
+libdir=/d/download/ffmpeg-full/lib
+includedir=/d/download/ffmpeg-full/include
+
+Name: libavformat
+Description: FFmpeg container format library
+Version: 61.5.101
+Requires: libavcodec >= 61.11.100, libswresample >= 5.2.100, libavutil >= 59.34.100
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lavformat -lm -latomic -lbz2 -lz -lsecur32 -lws2_32
+Libs.private: 
+Cflags: -I${includedir}

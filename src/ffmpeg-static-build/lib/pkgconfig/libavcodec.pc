@@ -1,0 +1,14 @@
+prefix=/d/download/ffmpeg-full
+exec_prefix=${prefix}
+libdir=/d/download/ffmpeg-full/lib
+includedir=/d/download/ffmpeg-full/include
+
+Name: libavcodec
+Description: FFmpeg codec library
+Version: 61.11.100
+Requires: libswresample >= 5.2.100, libavutil >= 59.34.100
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lavcodec -liconv -lm -latomic -llzma -lmfuuid -lole32 -lstrmiids -lole32 -luser32 -lz
+Libs.private: 
+Cflags: -I${includedir}

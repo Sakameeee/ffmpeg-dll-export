@@ -1,0 +1,14 @@
+prefix=/d/download/ffmpeg-full
+exec_prefix=${prefix}
+libdir=/d/download/ffmpeg-full/lib
+includedir=/d/download/ffmpeg-full/include
+
+Name: libavdevice
+Description: FFmpeg device handling library
+Version: 61.2.100
+Requires: libavfilter >= 10.2.102, libswscale >= 8.2.100, libavformat >= 61.5.101, libavcodec >= 61.11.100, libswresample >= 5.2.100, libavutil >= 59.34.100
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lavdevice -lpsapi -lole32 -lstrmiids -luuid -loleaut32 -lshlwapi -lgdi32 -lm -latomic -lvfw32
+Libs.private: 
+Cflags: -I${includedir}

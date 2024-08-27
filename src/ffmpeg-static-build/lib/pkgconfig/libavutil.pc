@@ -1,0 +1,14 @@
+prefix=/d/download/ffmpeg-full
+exec_prefix=${prefix}
+libdir=/d/download/ffmpeg-full/lib
+includedir=/d/download/ffmpeg-full/include
+
+Name: libavutil
+Description: FFmpeg utility library
+Version: 59.34.100
+Requires: 
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lavutil -lm -luser32 -lbcrypt -latomic
+Libs.private: 
+Cflags: -I${includedir}

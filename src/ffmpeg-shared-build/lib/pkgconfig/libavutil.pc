@@ -1,0 +1,14 @@
+prefix=/d/download/ffmpeg-shared
+exec_prefix=${prefix}
+libdir=/d/download/ffmpeg-shared/lib
+includedir=/d/download/ffmpeg-shared/include
+
+Name: libavutil
+Description: FFmpeg utility library
+Version: 59.34.100
+Requires: 
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lavutil 
+Libs.private: -lm -luser32 -lbcrypt -latomic
+Cflags: -I${includedir}
