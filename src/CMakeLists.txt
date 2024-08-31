@@ -24,6 +24,11 @@ if(LINK_STATIC_LIBS)
         PkgConfig::AVCODEC
         PkgConfig::AVFORMAT
         PkgConfig::AVUTIL
+
+        -static
+        -lbz2
+        -lz
+        -liconv
     )
 endif()
 

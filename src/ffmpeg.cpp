@@ -1,4 +1,5 @@
 #include "../include/ffmpeg.h"
+#include <cstring> // 包含 memset 头文件
 #include <iostream>
 
 extern "C" {
@@ -6,6 +7,13 @@ extern "C" {
 #include <libavformat/avformat.h>
 #include <libavutil/avutil.h>
 #include <libavutil/timestamp.h>
+
+// 用于处理 FFmpeg 错误的辅助函数
+void print_ffmpeg_error(int errnum, const char *action) {
+  char errbuf[AV_ERROR_MAX_STRING_SIZE];
+  av_strerror(errnum, errbuf, sizeof(errbuf));
+  std::cerr << "Error " << action << ": " << errbuf << std::endl;
+}
 
 bool merge_video_audio(const char *videoPath, const char *audioPath,
                        const char *outputPath) {
@@ -15,17 +23,28 @@ bool merge_video_audio(const char *videoPath, const char *audioPath,
   // 打开视频和音频文件
   AVFormatContext *videoContext = nullptr;
   AVFormatContext *audioContext = nullptr;
-  if (avformat_open_input(&videoContext, videoPath, nullptr, nullptr) < 0 ||
-      avformat_open_input(&audioContext, audioPath, nullptr, nullptr) < 0) {
-    std::cerr << "unable to open input file" << std::endl;
+  int ret;
+
+  if ((ret = avformat_open_input(&videoContext, videoPath, nullptr, nullptr)) <
+      0) {
+    print_ffmpeg_error(ret, "opening video input file");
+    return false;
+  }
+
+  if ((ret = avformat_open_input(&audioContext, audioPath, nullptr, nullptr)) <
+      0) {
+    print_ffmpeg_error(ret, "opening audio input file");
+    avformat_close_input(&videoContext);
     return false;
   }
 
   // 创建输出上下文
   AVFormatContext *outputContext = nullptr;
-  avformat_alloc_output_context2(&outputContext, nullptr, nullptr, outputPath);
-  if (!outputContext) {
-    std::cerr << "unable to create output context" << std::endl;
+  if ((ret = avformat_alloc_output_context2(&outputContext, nullptr, nullptr,
+                                            outputPath)) < 0) {
+    print_ffmpeg_error(ret, "creating output context");
+    avformat_close_input(&videoContext);
+    avformat_close_input(&audioContext);
     return false;
   }
 
@@ -34,13 +53,18 @@ bool merge_video_audio(const char *videoPath, const char *audioPath,
     AVStream *inStream = videoContext->streams[i];
     AVStream *outStream = avformat_new_stream(outputContext, nullptr);
     if (!outStream) {
-      std::cerr << "unable to allocate stream" << std::endl;
+      std::cerr << "unable to allocate video stream" << std::endl;
+      avformat_close_input(&videoContext);
+      avformat_close_input(&audioContext);
+      avformat_free_context(outputContext);
       return false;
     }
-    if (avcodec_parameters_copy(outStream->codecpar, inStream->codecpar) < 0) {
-      std::cerr
-          << "unable to copy parameters from input stream to output stream"
-          << std::endl;
+    if ((ret = avcodec_parameters_copy(outStream->codecpar,
+                                       inStream->codecpar)) < 0) {
+      print_ffmpeg_error(ret, "copying video codec parameters");
+      avformat_close_input(&videoContext);
+      avformat_close_input(&audioContext);
+      avformat_free_context(outputContext);
       return false;
     }
   }
@@ -49,24 +73,32 @@ bool merge_video_audio(const char *videoPath, const char *audioPath,
     AVStream *inStream = audioContext->streams[i];
     AVStream *outStream = avformat_new_stream(outputContext, nullptr);
     if (!outStream) {
-      std::cerr << "unable to allocate stream" << std::endl;
+      std::cerr << "unable to allocate audio stream" << std::endl;
+      avformat_close_input(&videoContext);
+      avformat_close_input(&audioContext);
+      avformat_free_context(outputContext);
       return false;
     }
-    if (avcodec_parameters_copy(outStream->codecpar, inStream->codecpar) < 0) {
-      std::cerr
-          << "unable to copy parameters from input stream to output stream"
-          << std::endl;
+    if ((ret = avcodec_parameters_copy(outStream->codecpar,
+                                       inStream->codecpar)) < 0) {
+      print_ffmpeg_error(ret, "copying audio codec parameters");
+      avformat_close_input(&videoContext);
+      avformat_close_input(&audioContext);
+      avformat_free_context(outputContext);
       return false;
     }
 
     // 手动设置音频流的编码器参数
     if (inStream->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
-      const AVCodec *codec = avcodec_find_decoder(
-          inStream->codecpar->codec_id); // 修正为 const AVCodec *
+      const AVCodec *codec = avcodec_find_decoder(inStream->codecpar->codec_id);
       AVCodecContext *codecContext = avcodec_alloc_context3(codec);
       avcodec_parameters_to_context(codecContext, inStream->codecpar);
       if (avcodec_open2(codecContext, codec, nullptr) < 0) {
-        std::cerr << "unable to open encoder" << std::endl;
+        std::cerr << "unable to open audio encoder" << std::endl;
+        avcodec_free_context(&codecContext);
+        avformat_close_input(&videoContext);
+        avformat_close_input(&audioContext);
+        avformat_free_context(outputContext);
         return false;
       }
 
@@ -80,15 +112,23 @@ bool merge_video_audio(const char *videoPath, const char *audioPath,
 
   // 打开输出文件
   if (!(outputContext->oformat->flags & AVFMT_NOFILE)) {
-    if (avio_open(&outputContext->pb, outputPath, AVIO_FLAG_WRITE) < 0) {
-      std::cerr << "unable to open output file" << std::endl;
+    if ((ret = avio_open(&outputContext->pb, outputPath, AVIO_FLAG_WRITE)) <
+        0) {
+      print_ffmpeg_error(ret, "opening output file");
+      avformat_close_input(&videoContext);
+      avformat_close_input(&audioContext);
+      avformat_free_context(outputContext);
       return false;
     }
   }
 
   // 写入文件头部
-  if (avformat_write_header(outputContext, nullptr) < 0) {
-    std::cerr << "failed to write header" << std::endl;
+  if ((ret = avformat_write_header(outputContext, nullptr)) < 0) {
+    print_ffmpeg_error(ret, "writing header");
+    avformat_close_input(&videoContext);
+    avformat_close_input(&audioContext);
+    avio_closep(&outputContext->pb);
+    avformat_free_context(outputContext);
     return false;
   }
 
@@ -103,15 +143,27 @@ bool merge_video_audio(const char *videoPath, const char *audioPath,
     AVStream *outStream = outputContext->streams[packet.stream_index];
     av_packet_rescale_ts(&packet, inStream->time_base, outStream->time_base);
     packet.pos = -1;
-    if (av_interleaved_write_frame(outputContext, &packet) < 0) {
-      std::cerr << "failed to write frame" << std::endl;
+    if ((ret = av_interleaved_write_frame(outputContext, &packet)) < 0) {
+      print_ffmpeg_error(ret, "writing frame");
+      av_packet_unref(&packet);
+      avformat_close_input(&videoContext);
+      avformat_close_input(&audioContext);
+      avio_closep(&outputContext->pb);
+      avformat_free_context(outputContext);
       return false;
     }
     av_packet_unref(&packet);
   }
 
   // 写入文件尾部
-  av_write_trailer(outputContext);
+  if ((ret = av_write_trailer(outputContext)) < 0) {
+    print_ffmpeg_error(ret, "writing trailer");
+    avformat_close_input(&videoContext);
+    avformat_close_input(&audioContext);
+    avio_closep(&outputContext->pb);
+    avformat_free_context(outputContext);
+    return false;
+  }
 
   // 清理资源
   avformat_close_input(&videoContext);
